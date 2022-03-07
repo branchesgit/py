@@ -21,7 +21,7 @@ def hProject(binary):
             hprojection[j,i] = 255
 
     cv2.imwrite("./imgs/hpro.png", hprojection)
-    return h_h
+    return h_h, hprojection
 
     
 # 垂直反向投影
@@ -42,7 +42,7 @@ def vProject(binary):
             vprojection[j,i] = 255
 
     cv2.imwrite("./imgs/vpro.png", vprojection)
-    return w_w
+    return w_w, vprojection
 
 # 集中分布 集中分布在哪几段. 可偏差范围
 def concentrated(list, num):
@@ -67,7 +67,7 @@ def concentrated(list, num):
 
 def get_concentrated(list):
     middle = list[int(len(list) / 2)]
-    ps = [0.5, 0.6, 0.7, 0.8, 0.9]
+    ps = [0.5, 0.6, 0.7, 0.8]
     ranges = []
     for k in range(len(ps)):
         loop = 0
@@ -104,6 +104,25 @@ def get_concentrated(list):
     return middle, ranges[idx + 1]
 
 
+def get_target_concentrated(list, v):
+    list.sort()
+    middle = list[int(len(list) / 2)]
+    loop = 0
+    p = 0
+    size = 0
+    while(p < v):
+        size = 0
+        loop = loop + 1
+        n = middle - loop
+        m = middle + loop
+        
+        for i in range(len(list)):
+            if list[i] >= n and list[i] <= m:
+                size = size + 1
+        p = size / len(list)
+      
+    
+    return middle, loop
 
 
 
