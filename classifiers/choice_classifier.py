@@ -11,6 +11,22 @@ class Line:
         self.length = h
         self.gap = 0
 
+class Rect: 
+    def __init__(self, x, y, w, h):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.area = w * h
+
+
+def sort_y(rect):
+    return rect.y
+
+
+def sort_x(rect):
+    return rect.x
+
 # 选择题切割.
 class ChoiceClassifier(Classifier):
     pass
@@ -41,39 +57,48 @@ class ChoiceClassifier(Classifier):
         cv2.morphologyEx(hprojection,cv2.MORPH_OPEN,kernel)
         contours, hierarchy = cv2.findContours(hprojection,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         y_rects = []
+        hs = []
         for i in range(0, len(contours)):
             x, y, w, h = cv2.boundingRect(contours[i])
             if w * h >= 200:
-                y_rects.append([x, y, w, h, w * h])
+                rect = Rect(x, y, w, h)
+                y_rects.append(rect)
+                hs.append(h)
 
-        print(y_rects)
-        
-        cv2.imwrite("./hpro.png", hprojection)
+        y_rects.sort(key=sort_y)
+        hs.sort()
+       # print(hs, y_rects)
+        r = y_rects[0]
+        er = y_rects[len(y_rects) - 1]
+        # x, y, w, h = 
+        rt = Rect(0, r.y, 0, er.y + er.h - r.y)
+        cv2.imwrite("./imgs/hpro.png", hprojection)
 
         w_w, vprojection = vProject(part)
         cv2.morphologyEx(vprojection,cv2.MORPH_OPEN,kernel)
-        cv2.imwrite("./vpro.png", vprojection)
+        cv2.imwrite("./imgs/vpro.png", vprojection)
         x_rects = []
+        ws = []
         contours, hierarchy = cv2.findContours(vprojection,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         for i in range(0, len(contours)):
             x, y, w, h = cv2.boundingRect(contours[i])
             if w * h >= 200:
-                x_rects.append([x, y, w, h, w * h])
+                rect = Rect(x, y, w, h)
+                x_rects.append(rect)
+                ws.append(w)
+        x_rects.sort(key=sort_x)
+        ws.sort()
+       # print(ws, x_rects)
+        rt.x = x_rects[0].x
+        rt.w = x_rects[len(x_rects) - 1].x + x_rects[len(x_rects) - 1].w - x_rects[0].x
 
+        direction = "horition"
+        if hs[0] < ws[0]:
+            direction = "vertica"
         
-
-    # 删除异常矩形，占比很小的就丢弃
-    def remove_unusual(self, rects, direction):  
-        print(rects)
-        values = []
-        if  direction == 'h':
-            for i in range(len(rects)):
-                values.append(rects[i][4])
-        else:
-            for i in range(len(rects)):
-                values.append(rects[i][4])
-        print(values)   
-
+        print(rt)
+        part = part[rt.y:rt.y + rt.h, rt.x: x + rt.w]
+        cv2.imwrite("./imgs/c.png",part)
 
     # 缩减范围，收敛处理
     #def convengence(self,part):
