@@ -24,7 +24,7 @@ def hProject(binary):
     return h_h, hprojection
 
     
-# 垂直反向投影
+# 垂直方向投影
 def vProject(binary):
     h, w = binary.shape
     # 垂直投影

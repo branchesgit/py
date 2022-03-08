@@ -2,30 +2,17 @@ from re import S
 from tracemalloc import start
 import cv2
 from classifier import Classifier
+from option_classifier import OptionClassifier
 from project import hProject, vProject, concentrated, get_target_concentrated
 import numpy as np
-
+from rect import Rect, sort_x, sort_y
 class Line:
     def __init__(self, start, h):
         self.start = start
         self.length = h
         self.gap = 0
 
-class Rect: 
-    def __init__(self, x, y, w, h):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
-        self.area = w * h
 
-
-def sort_y(rect):
-    return rect.y
-
-
-def sort_x(rect):
-    return rect.x
 
 # 选择题切割.
 class ChoiceClassifier(Classifier):
@@ -34,6 +21,7 @@ class ChoiceClassifier(Classifier):
     def classifier(self):
         x, y, width, height = self.rect
         part = self.mat[y:y + height, x: x + width]
+        c_choice_mat = self.mat[y:y + height, x: x + width].copy()
         
         ret,thresh = cv2.threshold(part,127,255,0)
         contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -47,10 +35,10 @@ class ChoiceClassifier(Classifier):
                 if w * h >= 10:
                     cv2.rectangle(part, (x,y), (x+w,y+h), (0,0,0), -1) 
         
-        self.convengence(part)
+        self.convengence(part, c_choice_mat)
 
     # 收缩范围，收敛处理
-    def convengence(self, part):
+    def convengence(self, part, c_choice_mat):
         # y轴投影，
         h_h, hprojection = hProject(part)
         kernel = np.ones((5,5),np.uint8)
@@ -88,7 +76,6 @@ class ChoiceClassifier(Classifier):
                 ws.append(w)
         x_rects.sort(key=sort_x)
         ws.sort()
-       # print(ws, x_rects)
         rt.x = x_rects[0].x
         rt.w = x_rects[len(x_rects) - 1].x + x_rects[len(x_rects) - 1].w - x_rects[0].x
 
@@ -96,9 +83,12 @@ class ChoiceClassifier(Classifier):
         if hs[0] < ws[0]:
             direction = "vertica"
         
-        print(rt)
-        part = part[rt.y:rt.y + rt.h, rt.x: x + rt.w]
+        part = c_choice_mat[rt.y:rt.y + rt.h, rt.x: x + rt.w]
         cv2.imwrite("./imgs/c.png",part)
+        optionClassifier = OptionClassifier()
+        optionClassifier.set_direction(direction)
+        optionClassifier.classifier(part)
+
 
     # 缩减范围，收敛处理
     #def convengence(self,part):
