@@ -3,7 +3,7 @@ from tracemalloc import start
 import cv2
 from classifier import Classifier
 from option_classifier import OptionClassifier
-from project import hProject, vProject, concentrated, get_target_concentrated
+from project import hProject, vProject
 import numpy as np
 from rect import Rect, sort_x, sort_y
 class Line:
@@ -89,43 +89,6 @@ class ChoiceClassifier(Classifier):
         optionClassifier.set_direction(direction)
         optionClassifier.classifier(part)
 
-
-    # 缩减范围，收敛处理
-    #def convengence(self,part):
-    #    h_h = hProject(part)
-    #    c_h_h = [i for i in h_h]
-    #    h_h.sort()
-    #    # 取集中分布
-    #    #for i in range(h_h):
-    #    values = concentrated(h_h, 2)
-    #    horizal_lines = self.draw_lines(values, c_h_h, part)
-    #    hl = []
-    #    for i in range(len(horizal_lines)):
-    #        hl.append(horizal_lines[i].length)
-    #        if i >= 1:
-    #            horizal_lines[i - 1].gap = horizal_lines[i].start - horizal_lines[i-1].start - horizal_lines[i-1].length
-    #
-    #    hl = concentrated(hl, 1)
-    #
-    #    w_w = vProject(part)
-    #    c_w_w = [i for i in w_w]
-    #    w_w.sort()
-    #    values = concentrated(w_w, 2)
-    #    vertail_lines = self.draw_lines(values, c_w_w, part)
-    #    vl = []
-    #    gaps = []
-    #    for i in range(len(vertail_lines)):
-    #        vl.append(vertail_lines[i].length)
-    #        if i >= 1:
-    #            vertail_lines[i - 1].gap = vertail_lines[i].start - vertail_lines[i-1].start - vertail_lines[i-1].length
-    #            gaps.append(vertail_lines[i-1].gap)
-    #
-    #    vl = concentrated(vl, 1)
-    #
-    #   
-    #    print('gaps =', gaps)
-
-        
 
     # 将有意义的黑色像素，画出来，判断边界.
     def draw_lines(self, values, projection, part):

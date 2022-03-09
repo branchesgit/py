@@ -41,88 +41,88 @@ def vProject(binary):
         for j in range(w_w[i]):
             vprojection[j,i] = 255
 
-    cv2.imwrite("./imgs/vpro.png", vprojection)
+    
     return w_w, vprojection
 
 # 集中分布 集中分布在哪几段. 可偏差范围
-def concentrated(list, num):
-    list.sort()
-    centers = []
-    size = int(len(list) / num)
-    i = 0
-    loop = 0
-    while(loop < num):
-        if i != num -1:
-            value, dis = get_concentrated(list[i: i + size])
-            centers.append(value)
-            centers.append(dis)
-            i = i + size
-        else: 
-            value, dis = get_concentrated(list[i: len(list)])
-            centers.append(value)
-            centers.append(dis)
-        loop = loop + 1
+# def concentrated(list, num):
+#     list.sort()
+#     centers = []
+#     size = int(len(list) / num)
+#     i = 0
+#     loop = 0
+#     while(loop < num):
+#         if i != num -1:
+#             value, dis = get_concentrated(list[i: i + size])
+#             centers.append(value)
+#             centers.append(dis)
+#             i = i + size
+#         else: 
+#             value, dis = get_concentrated(list[i: len(list)])
+#             centers.append(value)
+#             centers.append(dis)
+#         loop = loop + 1
     
-    return centers
+#     return centers
 
-def get_concentrated(list):
-    middle = list[int(len(list) / 2)]
-    ps = [0.5, 0.6, 0.7, 0.8]
-    ranges = []
-    for k in range(len(ps)):
-        loop = 0
-        p = 0
-        size = 0
-        while(p < ps[k]):
-            size = 0
-            loop = loop + 1
-            n = middle - loop
-            m = middle + loop
+# def get_concentrated(list):
+#     middle = list[int(len(list) / 2)]
+#     ps = [0.5, 0.6, 0.7, 0.8]
+#     ranges = []
+#     for k in range(len(ps)):
+#         loop = 0
+#         p = 0
+#         size = 0
+#         while(p < ps[k]):
+#             size = 0
+#             loop = loop + 1
+#             n = middle - loop
+#             m = middle + loop
            
-            for i in range(len(list)):
-                if list[i] >= n and list[i] <= m:
-                    size = size + 1
-            p = size / len(list)
-        ranges.append(loop)
-    dis = []
+#             for i in range(len(list)):
+#                 if list[i] >= n and list[i] <= m:
+#                     size = size + 1
+#             p = size / len(list)
+#         ranges.append(loop)
+#     dis = []
     
-    for i in range(len(ranges)):
-        if i >= 1:
-            loop = ranges[i] - ranges[i - 1]
-            dis.append(loop)
+#     for i in range(len(ranges)):
+#         if i >= 1:
+#             loop = ranges[i] - ranges[i - 1]
+#             dis.append(loop)
 
-    idx = -1
-    for i in range(len(dis)):
-        if dis[i] > 30:
-            idx = i - 1
-            break
-        else:
-            idx = i
+#     idx = -1
+#     for i in range(len(dis)):
+#         if dis[i] > 30:
+#             idx = i - 1
+#             break
+#         else:
+#             idx = i
 
-    loop = ranges[idx + 1]
+#     loop = ranges[idx + 1]
     
-    return middle, ranges[idx + 1]
+#     return middle, ranges[idx + 1]
 
 
-def get_target_concentrated(list, v):
-    list.sort()
-    middle = list[int(len(list) / 2)]
-    loop = 0
-    p = 0
-    size = 0
-    while(p < v):
-        size = 0
-        loop = loop + 1
-        n = middle - loop
-        m = middle + loop
+# def get_target_concentrated(list, v):
+#     list.sort()
+#     middle = list[int(len(list) / 2)]
+#     loop = 0
+#     p = 0
+#     size = 0
+#     while(p < v):
+#         size = 0
+#         loop = loop + 1
+#         n = middle - loop
+#         m = middle + loop
         
-        for i in range(len(list)):
-            if list[i] >= n and list[i] <= m:
-                size = size + 1
-        p = size / len(list)
+#         for i in range(len(list)):
+#             if list[i] >= n and list[i] <= m:
+#                 size = size + 1
+#         p = size / len(list)
       
     
-    return middle, loop
+#     return middle, loop
 
 
 
