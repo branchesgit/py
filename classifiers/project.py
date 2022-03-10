@@ -44,6 +44,7 @@ def vProject(binary):
     
     return w_w, vprojection
 
+
 # 集中分布 集中分布在哪几段. 可偏差范围
 # def concentrated(list, num):
 #     list.sort()

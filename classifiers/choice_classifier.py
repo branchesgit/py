@@ -1,129 +1,96 @@
-from re import S
-from tracemalloc import start
-import cv2
+
+
 from classifier import Classifier
-from option_classifier import OptionClassifier
-from project import hProject, vProject
+import cv2
+from rect import get_gaps, remove_too_large_gap_line
+from util.projection import Y_Project, X_Project
+from util.data import get_lines, get_middle_value, get_max_value, filter_zero, get_site_value, split_list_to_group_idx
 import numpy as np
-from rect import Rect, sort_x, sort_y
-class Line:
-    def __init__(self, start, h):
-        self.start = start
-        self.length = h
-        self.gap = 0
 
-
-
-# 选择题切割.
 class ChoiceClassifier(Classifier):
-    pass
-    
+    pass    
+
+    # 先按选项是水平分布的，按层来划分.
     def classifier(self):
+        self.convergency_rect()
+       #self.do_horization()
+
+    # 收敛
+    def convergency_rect(self):
         x, y, width, height = self.rect
         part = self.mat[y:y + height, x: x + width]
-        c_choice_mat = self.mat[y:y + height, x: x + width].copy()
-        
-        ret,thresh = cv2.threshold(part,127,255,0)
-        contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        areas = []
-        m = 1000
-        for i in range(0,len(contours)):  
-            x, y, w, h = cv2.boundingRect(contours[i])   
-            areas.append(w * h)
-            m = min(m, w * h)
-            if w < 3 * width / 4 and h < 3 * height / 4:
-                if w * h >= 10:
-                    cv2.rectangle(part, (x,y), (x+w,y+h), (0,0,0), -1) 
-        
-        self.convengence(part, c_choice_mat)
+        h_h, h_projection = Y_Project(part)
+        c_w_w = filter_zero(h_h)
+        max_value = get_max_value(c_w_w)
+        lines = get_lines(h_h, 1, max_value, width)
+        y_start = lines[0].start
+        y_end = lines[len(lines) - 1].start + lines[len(lines) - 1].h
 
-    # 收缩范围，收敛处理
-    def convengence(self, part, c_choice_mat):
-        # y轴投影，
-        h_h, hprojection = hProject(part)
-        kernel = np.ones((5,5),np.uint8)
-        cv2.morphologyEx(hprojection,cv2.MORPH_OPEN,kernel)
-        contours, hierarchy = cv2.findContours(hprojection,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        y_rects = []
-        hs = []
-        for i in range(0, len(contours)):
-            x, y, w, h = cv2.boundingRect(contours[i])
-            if w * h >= 200:
-                rect = Rect(x, y, w, h)
-                y_rects.append(rect)
-                hs.append(h)
+        w_w, v_projection = X_Project(part)
+        c_w_w = filter_zero(w_w)
+        max_value = get_max_value(c_w_w)
+        lines = get_lines(w_w, 1, max_value, height)
+        x_start = lines[0].start
+        x_end = lines[len(lines) - 1].start + lines[len(lines) - 1].h
+        part = part[y_start:y_end, x_start: x_end]
+        self.mat = part
+        self.do_horization()
 
-        y_rects.sort(key=sort_y)
-        hs.sort()
-       # print(hs, y_rects)
-        r = y_rects[0]
-        er = y_rects[len(y_rects) - 1]
-        # x, y, w, h = 
-        rt = Rect(0, r.y, 0, er.y + er.h - r.y)
-        cv2.imwrite("./imgs/hpro.png", hprojection)
 
-        w_w, vprojection = vProject(part)
-        cv2.morphologyEx(vprojection,cv2.MORPH_OPEN,kernel)
-        cv2.imwrite("./imgs/vpro.png", vprojection)
-        x_rects = []
+    def do_horization(self):
+        part = self.mat
+        height, width = part.shape
+        h_h, h_projection = Y_Project(part)
+        c_h_h = filter_zero(h_h)
+        middle_value = get_middle_value(c_h_h)
+        max_value = get_max_value(c_h_h)
+        lines = get_lines(h_h, middle_value / 3 , max_value, 1000)
+        for i in range(len(lines)):
+            if i == 0:
+                i = 1
+                line = lines[i]
+                start = line.start
+                h = line.h
+                self.get_layer_desc(part[start:start + h, 0:width], True)
+
+    # 获取每一层的信息. 数字和选项的分类判断.
+    def get_layer_desc(self, mat, is_attempt_layer_desc):
+        kernel = np.zeros((2, 2), np.uint8)
+        cv2.morphologyEx(mat, cv2.MORPH_CLOSE, kernel)
+        cv2.imwrite("./imgs/layer.png", mat)
+        w_w, vprojection = X_Project(mat)
+        cv2.imwrite("./imgs/y_projection.png", vprojection)
+        c_w_w = filter_zero(w_w)
+        middle_value = get_middle_value(c_w_w)
+        max_value = get_max_value(c_w_w)
+        height, width = mat.shape
+        lines = get_lines(w_w, 1 , max_value, height)
+        gaps = get_gaps(lines)
+        # 找到合适的间隙，进行膨胀.
+        gap = get_site_value(gaps, 8)
+        print('gap value', gap)
+        kernel = np.ones((gap,gap),np.uint8)
+        mat = cv2.erode(mat,kernel)
+        cv2.imwrite("./imgs/pp.png", mat)
+        w_w, vprojection = X_Project(mat)
+        cv2.imwrite('./imgs/erode.png', vprojection)
+        c_w_w = filter_zero(w_w)
+        middle_value = get_middle_value(c_w_w)
+        max_value = get_max_value(c_w_w)
+        lines = get_lines(w_w, 1 , max_value, width)
+        gaps = get_gaps(lines)
         ws = []
-        contours, hierarchy = cv2.findContours(vprojection,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        for i in range(0, len(contours)):
-            x, y, w, h = cv2.boundingRect(contours[i])
-            if w * h >= 200:
-                rect = Rect(x, y, w, h)
-                x_rects.append(rect)
-                ws.append(w)
-        x_rects.sort(key=sort_x)
-        ws.sort()
-        rt.x = x_rects[0].x
-        rt.w = x_rects[len(x_rects) - 1].x + x_rects[len(x_rects) - 1].w - x_rects[0].x
-
-        direction = "horition"
-        if hs[0] < ws[0]:
-            direction = "vertica"
-        
-        part = c_choice_mat[rt.y:rt.y + rt.h, rt.x: x + rt.w]
-        cv2.imwrite("./imgs/c.png",part)
-        optionClassifier = OptionClassifier()
-        optionClassifier.set_direction(direction)
-        optionClassifier.classifier(part)
-
-
-    # 将有意义的黑色像素，画出来，判断边界.
-    def draw_lines(self, values, projection, part):
-        withe, ws, black, bs = values
-        withe_min = max(0, withe - ws)
-        withe_max = withe + ws
-        lines = []
-        start = -1
-        h = 0
-
-        for i in range(len(projection)):
-            value =  projection[i]
-            if value >= withe_min and value <= withe_max :
-                if start == -1:
-                    continue
-                else: 
-                    # 结束，
-                    line = Line(start, h)
-                    lines.append(line)
-                    start = -1
-            else:
-                if start == -1:
-                    start = i
-                    h = 1
-                else:
-                    h = h + 1
-        
-        return lines
+        for i in range(len(lines)):
+            ws.append(lines[i].h)
+        print(ws, 'ws')
+        #idx = split_list_to_group_idx(ws)
+        #size = idx + 1
 
 
 
-        
- 
+
 if __name__=='__main__':
     img = cv2.imread("./imgs/1.png", 0)
-    #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    choiceClassifier = ChoiceClassifier(img, (242, 709, 1057, 188), [1])
+    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    choiceClassifier = ChoiceClassifier(img, (242, 709, 1057, 188))
     choiceClassifier.classifier()
