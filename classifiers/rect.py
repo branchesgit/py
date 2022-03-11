@@ -45,7 +45,6 @@ def get_line_widths(list):
 
 def get_gaps(lines):
     gaps = []
-    print('get_gaps size', len(lines))
     for i in range(len(lines)):
         if i >= 1:
             gap = lines[i].start - lines[i-1].start -lines[i-1].h

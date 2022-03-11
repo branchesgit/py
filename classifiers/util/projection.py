@@ -1,5 +1,4 @@
 import cv2
-from matplotlib.cbook import ls_mapper
 import numpy as np
 from functools import cmp_to_key
 from rect import Line
@@ -41,8 +40,7 @@ def X_Project(binary):
     for i in range(w):
         for j in range(w_w[i]):
             vprojection[j,i] = 255
-    
-    cv2.imwrite('./imgs/row.png', vprojection)
+
     return w_w, vprojection
 
 
