@@ -1,70 +1,56 @@
 from rect import Line
 
-def get_middle_value(list):
-    list_length = len(list)
-    if list_length > 0:
-        l = [i for i in list]
-        l = sort_value(l, comp_value)
-        idx = int(len(list) / 2)
-        return l[idx]
-    else:
-        return 0
-
-def comp_value(a, b):
-    if a > b:
-        return False
-    else: 
-        return True
 
 def get_max_value(list):
     list_length = len(list)
     if list_length > 0:
         list.sort()
-        return list[list_length -1]
+        return list[list_length - 1]
     else:
         return 0
 
-def get_lines(list, w_min, w_max, w_h, isPrint):
+
+def get_lines(list, w_min, w_max, w_h, is_print):
     lines = []
     start = -1
     h = 0
     total = 0
     rates = []
     for i in range(len(list)):
-        value =  list[i]
-        if isPrint:
-            print(value, i )
+        value = list[i]
+        if is_print:
+            print(value, i)
         # 有值，且值满足要求.
         if value > w_min and value <= w_max:
-            if isPrint:
+            if is_print:
                 print('if', start, h)
             if start == -1:
                 start = i
                 h = 1
-                total = value 
-            else: 
+                total = value
+            else:
                 h += 1
                 total += value
 
             if i == len(list) - 1:
                 if start != -1:
                     line = Line(start, h)
-                    if w_h and h :
+                    if w_h and h:
                         line.areaRate = total / (h * w_h)
                         rates.append(line.areaRate)
                         if (line.areaRate >= 0.06):
                             lines.append(line)
                     else:
-                        lines.append(line) 
-        #  当没有白色像素的时候，
+                        lines.append(line)
+                        #  当没有白色像素的时候，
         else:
-            if isPrint:
+            if is_print:
                 print('else', start, h)
             if start == -1:
-               continue
-            else :
+                continue
+            else:
                 line = Line(start, h)
-                if w_h :
+                if w_h:
                     line.areaRate = total / (h * w_h)
                     rates.append(line.areaRate)
                     if (line.areaRate >= 0.06):
@@ -72,8 +58,8 @@ def get_lines(list, w_min, w_max, w_h, isPrint):
                 else:
                     lines.append(line)
             start = -1
-            h = 0   
-               
+            h = 0
+
     return lines
 
 
@@ -88,10 +74,11 @@ def sort_value(list, sort_func):
                 tmp = list[i]
                 list[i] = list[k]
                 list[k] = tmp
-            k -=1
+            k -= 1
 
         i -= 1
     return list
+
 
 def filter_zero(list):
     l = len(list) - 1
@@ -100,8 +87,9 @@ def filter_zero(list):
         if list[l]:
             ls.append(list[l])
         l -= 1
-    
+
     return ls
+
 
 def get_site_value(list, max_gap):
     list.sort()
@@ -110,14 +98,14 @@ def get_site_value(list, max_gap):
         if i >= max_gap:
             idx = i
             break
-    
+
     value = max_gap
     if idx > 0:
         idx -= 1
         value = list[idx] + 1
 
-   
     return value
+
 
 def get_index(list, value):
     idx = -1
@@ -126,6 +114,7 @@ def get_index(list, value):
             idx = i
             break
     return idx
+
 
 def filter_list(list):
     values = []
@@ -146,9 +135,9 @@ def get_max_list_item(list):
             l = l_l
     return idx, l
 
+
 # 按最大值进行分割，
 def split_list_to_group_idx(list):
-    
     c_list = [i for i in list]
     list.sort()
     list_length = len(list)
@@ -168,21 +157,22 @@ def split_list_to_group_idx(list):
         idx = get_index(values, max_value)
         split_list[max_idx] = values[0: idx + 1]
         split_list.insert(max_idx + 1, values[idx + 1: len(values)])
-        
+
         count += 1
     return split_list
-            
+
+
 def get_split_max_value(values, max_values):
     if len(values) <= 2:
         return 0
-    
+
     c_values = [i for i in values]
     values.sort()
     min_value = values[0]
     max_value = values[len(values) - 1]
     max_idx = get_index(c_values, max_value)
 
-    if max_idx  >= len(values) - 2:
+    if max_idx >= len(values) - 2:
         max_value = values[len(values) - 2]
         max_idx = get_index(values, max_value)
 
@@ -192,7 +182,7 @@ def get_split_max_value(values, max_values):
 
         if max_value - min_value < max_min_value - max_value:
             return 0
-    
+
     return max_value
 
 
@@ -203,8 +193,9 @@ def is_exist_min_value(values, min_value):
         if i <= min_value:
             is_exist = True
             break
-    
+
     return is_exist
+
 
 def is_width_rate_of_change(values):
     values.sort()
@@ -215,4 +206,3 @@ def is_width_rate_of_change(values):
             count += 1
 
     return count >= 2
-
