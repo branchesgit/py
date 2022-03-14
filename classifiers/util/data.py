@@ -138,6 +138,8 @@ def get_max_list_item(list):
 
 # 按最大值进行分割，
 def split_list_to_group_idx(list):
+    if len(list) <= 2:
+        return [list]
     c_list = [i for i in list]
     list.sort()
     list_length = len(list)

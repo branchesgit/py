@@ -30,8 +30,21 @@ class Choice:
         self.item_mark = self.get_item_mark(x, y, w, h)
 
     def get_number_item(self, x, y, lines, h):
-        line = lines[0]
-        w = line.h
+        count = 1
+        if len(lines) >= 4:
+            gaps = get_gaps(lines)
+            i = 0
+            c_gaps = [i for i in gaps]
+            c_gaps.sort()
+            max_value = c_gaps[len(gaps) - 2]
+            # 由于数值间隔可能比较开，导致需要合并
+            for gap in gaps:
+                if max_value / gap > 2:
+                    count += 1
+                else:
+                    break
+
+        w = lines[count - 1].start + lines[count - 1].h - lines[0].start
         return Rect(x - 3, y, w + 6, h)
 
     def get_item_mark(self, x, y, w, h):

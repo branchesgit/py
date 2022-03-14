@@ -5,7 +5,7 @@ from util.projection import Y_Project, X_Project
 from util.data import get_lines, get_max_value, filter_zero, split_list_to_group_idx, is_exist_min_value, \
     is_width_rate_of_change
 import numpy as np
-
+import os
 
 class ChoiceClassifier(Classifier):
     pass
@@ -43,7 +43,7 @@ class ChoiceClassifier(Classifier):
         [[x_start, y_start], [x_end, y_end]] = points
         part = self.mat[y + y_start: y + y_end, x + x_start: x + x_end]
 
-        # cv2.imwrite('./imgs/part_.png', part)
+        cv2.imwrite('./imgs/part_.png', part)
         height, width = part.shape
         kernel = np.zeros((2, 2), np.uint8)
         cv2.morphologyEx(part, cv2.MORPH_OPEN, kernel)
@@ -67,19 +67,20 @@ class ChoiceClassifier(Classifier):
                 for g_idx in range(len(groups)):
                     group = groups[g_idx]
                     group_len = len(group)
-                    group_lines = lines[count: count + group_len]
-                    h_start = group_lines[0].start
-                    h_end = group_lines[len(group_lines) - 1].start + group_lines[len(group_lines) - 1].h
-                    if g_idx == len(groups) - 1:
-                        h_end = width
-                    choice_mat = layer_mat[0: line.h, h_start: h_end]
-                    row_blocks.append([h_start, h_end])
-                    choice_x = x + x_start + h_start
-                    choice_y = y + y_start + line.start
-                    options.append(Choice(choice_x, choice_y, h_end - h_start, line.h, group_lines))
-                    # cv2.imwrite("./imgs/choice_" + str(idx) + "_" + str(choice_block_idx) + ".png", choice_mat)
-                    choice_block_idx += 1
-                    count += group_len
+                    if group_len:
+                        group_lines = lines[count: count + group_len]
+                        h_start = group_lines[0].start
+                        h_end = group_lines[len(group_lines) - 1].start + group_lines[len(group_lines) - 1].h
+                        if g_idx == len(groups) - 1:
+                            h_end = width
+                        choice_mat = layer_mat[0: line.h, h_start: h_end]
+                        row_blocks.append([h_start, h_end])
+                        choice_x = x + x_start + h_start
+                        choice_y = y + y_start + line.start
+                        options.append(Choice(choice_x, choice_y, h_end - h_start, line.h, group_lines))
+                        # cv2.imwrite("./imgs/choice_" + str(idx) + "_" + str(choice_block_idx) + ".png", choice_mat)
+                        choice_block_idx += 1
+                        count += group_len
                 blocks.append(row_blocks)
 
             cv2.imwrite("./imgs/or.png", self.mat)
@@ -90,7 +91,7 @@ class ChoiceClassifier(Classifier):
                 item_mark = choice.item_mark
                 cv2.imwrite("./imgs/c_" + str(idx) + ".png", self.mat[item_mark.y: item_mark.y + item_mark.h,
                                                              item_mark.x: item_mark.x + item_mark.w])
-                cv2.imwrite("./imgs/n_" + str(idx) + ".png", self.mat[number_item.y: number_item.y + number_item.h,
+                cv2.imwrite("./imgs/numbers/" + self.file_name + "_" + str(idx) + ".png", self.mat[number_item.y: number_item.y + number_item.h,
                                                              number_item.x: number_item.x + number_item.w])
 
     # 获取每一层的信息. 数字和选项的分类判断.
@@ -103,7 +104,7 @@ class ChoiceClassifier(Classifier):
             if count >= 20:
                 break
             w_w, v_projection = X_Project(mat)
-            cv2.imwrite("./imgs/y_projection.png", v_projection)
+            cv2.imwrite("./imgs/y_projection_" + str(index) + ".png", v_projection)
             c_w_w = filter_zero(w_w)
             max_value = get_max_value(c_w_w)
             height, width = mat.shape
@@ -128,12 +129,41 @@ class ChoiceClassifier(Classifier):
                 break
 
         split_list = split_list_to_group_idx(gaps)
-        print(split_list)
+        print('file_name', self.file_name, '===', split_list)
         return split_list, lines
 
 
+path = "D:/sb/10107/files/"
+
 if __name__ == '__main__':
-    img = cv2.imread("./imgs/1.png", 0)
-    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    choiceClassifier = ChoiceClassifier(img, (242, 709, 1057, 188))
-    choiceClassifier.classifier()
+    files = os.listdir(path)  # 获得文件夹中所有文件的名称列表
+    for file in files:
+        i = 0
+        skip_zero = True
+        idx = -1
+        end = -1
+        while i < len(file):
+            value = file[i: i+1]
+            i += 1
+            if skip_zero:
+                if '0' < value <= '9':
+                    if idx == -1:
+                        skip_zero = False
+                        idx = i
+            else:
+                if not ('0' <= value <= '9'):
+                    if end == -1:
+                        end = i - 1
+
+        value = file[idx: end]
+        if int(value) % 2 == 1:
+            file = path + file
+            img = cv2.imread(file, 0)
+            img = np.rot90(img)
+            choiceClassifier = ChoiceClassifier(img, (102, 825, 999, 203), value)
+            # 103 824, 1011, 211
+            # choiceClassifier = ChoiceClassifier(img, (103, 824, 1011, 211), value)
+            choiceClassifier.classifier()
+    # img = cv2.imread("./imgs/1.png", 0)
+
+
