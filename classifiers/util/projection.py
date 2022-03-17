@@ -54,3 +54,16 @@ def closed_rectangle(mat, min_area):
 
         if h < 3 * height / 4:
             cv2.rectangle(mat, (x, y), (x + w, y + h), (0, 0, 0), -1)
+
+def get_rects(mat):
+    contours, _ = cv2.findContours(mat,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    height, width = mat.shape
+
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+
+        if w > 10 and w <  width / 2 and h < height / 2 and h > 5 :
+            print(w, h)
+            cv2.rectangle(mat, (x, y), (x+w, y+h), (0, 0, 255), 10)
+
+    cv2.imwrite("./imgs/part_.png", mat);

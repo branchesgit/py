@@ -1,9 +1,9 @@
 from classifier import Classifier
 import cv2
 from rect import get_gaps, Choice
-from util.projection import Y_Project, X_Project
+from util.projection import Y_Project, X_Project, get_rects
 from util.data import get_lines, get_max_value, filter_zero, split_list_to_group_idx, is_exist_min_value, \
-    is_width_rate_of_change
+    is_width_rate_of_change, remove_exception_line
 import numpy as np
 import os
 
@@ -12,8 +12,34 @@ class ChoiceClassifier(Classifier):
 
     # 先按选项是水平分布的，按层来划分.
     def classifier(self):
+        
         points = self.convergency_rect()
-        self.do_horization(points)
+        self.do_vertica(points)
+    
+
+    
+    def do_vertica(self, points):
+
+        x, y, width, height = self.rect
+        [[x_start, y_start], [x_end, y_end]] = points
+        part = self.mat[y + y_start: y + y_end, x + x_start: x + x_end]
+        cv2.imwrite("./imgs/part.png", part)
+        kernel = np.zeros((2, 2), np.uint8)
+        cv2.morphologyEx(part, cv2.MORPH_OPEN, kernel)
+        w_w, v_projection = X_Project(part)
+        height, width = part.shape
+        print(height, width)
+        cv2.imwrite("./imgs/x.png", v_projection)
+        c_w_w = filter_zero(w_w)
+        max_value = get_max_value(c_w_w)
+        lines = get_lines(w_w, 1, max_value, height, False)
+        remove_exception_line(lines, w_w)
+
+        print('size is ', len(lines))
+        for i in range(len(lines)):
+            x_start = lines[i].start
+            x_end = lines[i].h
+            cv2.imwrite("./imgs/line_" + str(i + 1) + ".png", part[0: height, x_start: x_start + x_end]);
 
     # 收敛
     def convergency_rect(self):
@@ -133,37 +159,42 @@ class ChoiceClassifier(Classifier):
         return split_list, lines
 
 
-path = "D:/sb/10107/files/"
+path = "D:/study/py/imgs/"
 
 if __name__ == '__main__':
-    files = os.listdir(path)  # 获得文件夹中所有文件的名称列表
-    for file in files:
-        i = 0
-        skip_zero = True
-        idx = -1
-        end = -1
-        while i < len(file):
-            value = file[i: i+1]
-            i += 1
-            if skip_zero:
-                if '0' < value <= '9':
-                    if idx == -1:
-                        skip_zero = False
-                        idx = i
-            else:
-                if not ('0' <= value <= '9'):
-                    if end == -1:
-                        end = i - 1
+    img = cv2.imread(path + "DN0114000003.TIF", 0)
+    choiceClassifier = ChoiceClassifier(img, (184, 721, 1143, 123), "DN0114000003")
+    choiceClassifier.classifier()
 
-        value = file[idx: end]
-        if int(value) % 2 == 1:
-            file = path + file
-            img = cv2.imread(file, 0)
-            img = np.rot90(img)
-            choiceClassifier = ChoiceClassifier(img, (102, 825, 999, 203), value)
-            # 103 824, 1011, 211
-            # choiceClassifier = ChoiceClassifier(img, (103, 824, 1011, 211), value)
-            choiceClassifier.classifier()
-    # img = cv2.imread("./imgs/1.png", 0)
+# if __name__ == '__main__':
+#     files = os.listdir(path)  # 获得文件夹中所有文件的名称列表
+#     for file in files:
+#         i = 0
+#         skip_zero = True
+#         idx = -1
+#         end = -1
+#         while i < len(file):
+#             value = file[i: i+1]
+#             i += 1
+#             if skip_zero:
+#                 if '0' < value <= '9':
+#                     if idx == -1:
+#                         skip_zero = False
+#                         idx = i
+#             else:
+#                 if not ('0' <= value <= '9'):
+#                     if end == -1:
+#                         end = i - 1
+
+#         value = file[idx: end]
+#         if int(value) % 2 == 1:
+#             file = path + file
+#             img = cv2.imread(file, 0)
+#             img = np.rot90(img)
+#             choiceClassifier = ChoiceClassifier(img, (102, 825, 999, 203), value)
+#             # 103 824, 1011, 211
+#             # choiceClassifier = ChoiceClassifier(img, (103, 824, 1011, 211), value)
+#             choiceClassifier.classifier()
+    
 
 

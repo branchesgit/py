@@ -60,7 +60,82 @@ def get_lines(list, w_min, w_max, w_h, is_print):
             start = -1
             h = 0
 
+
+    
+
+
     return lines
+
+
+def remove_exception_line(lines, list):
+    
+    if len(lines) <= 2:
+        return
+
+    ws = []
+    for line in lines:
+        ws.append(line.h)
+    
+    print(ws)
+    c_ws = [i for i in ws]
+    c_ws.sort()
+    min_w = c_ws[0];
+    count = 0
+
+    for w in ws:
+        if min_w * 3 / 2 >= w :
+            count += 1
+
+    # 大部分数据都在这里.
+    if count / len(ws) > 0.5:
+        
+        for idx in range(len(ws)):
+            # 过宽的线段需要修正.
+            if ws[idx] / min_w > 1.8:
+                fix_w = int(1.3 * min_w)
+                totals = []
+                line = lines[idx]
+                start = line.start
+                some = list[start: start + line.h]
+                print(line.h, 'width', some)
+                for i in range(line.h - fix_w):
+                    sum = 0
+                    k = 0
+                    for k in range(fix_w):
+                        sum += some[i + k]
+                    totals.append(sum);
+                
+                c_totals = [i for i in totals]
+                c_totals.sort()
+
+                count = int(line.h / min_w)
+                i = 0
+                while i < (count - 1):
+                    
+
+                    i += 1
+
+
+
+
+
+                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def sort_value(list, sort_func):
