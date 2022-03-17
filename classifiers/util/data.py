@@ -60,15 +60,43 @@ def get_lines(list, w_min, w_max, w_h, is_print):
             start = -1
             h = 0
 
-
-    
-
-
     return lines
 
 
+def sortSum(list):
+    return list[len(list) - 1]
+
+# 找到小于0的连续数据.
+def get_lower_zero_lines(list):
+    lines = []
+    start = -1
+    some = []
+    for idx in range(len(list)):
+        if  list[idx] < 0:
+            if start == -1:
+                some = []
+                some.append(idx)
+                some.append(list[idx])
+                start = idx
+            else:
+                some.append(list[idx])
+        else:
+            if len(some) > 0:
+                sum = 0
+                for i in range(len(some)):
+                    if i > 0:
+                        sum += some[i]
+                some.append(sum)
+                lines.append(some)
+                start = -1
+                some = []
+    # 暂时不判断这种值的合法性.
+    lines.sort(key=sortSum)
+    return lines
+
+
+
 def remove_exception_line(lines, list):
-    
     if len(lines) <= 2:
         return
 
@@ -76,7 +104,6 @@ def remove_exception_line(lines, list):
     for line in lines:
         ws.append(line.h)
     
-    print(ws)
     c_ws = [i for i in ws]
     c_ws.sort()
     min_w = c_ws[0];
@@ -86,40 +113,44 @@ def remove_exception_line(lines, list):
         if min_w * 3 / 2 >= w :
             count += 1
 
-    # 大部分数据都在这里.
     if count / len(ws) > 0.5:
-        
         for idx in range(len(ws)):
             # 过宽的线段需要修正.
             if ws[idx] / min_w > 1.8:
-                fix_w = int(1.3 * min_w)
-                totals = []
                 line = lines[idx]
                 start = line.start
                 some = list[start: start + line.h]
-                print(line.h, 'width', some)
-                for i in range(line.h - fix_w):
-                    sum = 0
-                    k = 0
-                    for k in range(fix_w):
-                        sum += some[i + k]
-                    totals.append(sum);
-                
-                c_totals = [i for i in totals]
-                c_totals.sort()
-
-                count = int(line.h / min_w)
+                total = 0
+                for i in some:
+                    total += i
+                avg  = int(total / ws[idx])
+                for i in range(len(some)):
+                    some[i] = some[i] - avg
+                print('some', some)
+                c = round(ws[idx] / min_w) - 1
                 i = 0
-                while i < (count - 1):
-                    
+                r_idx = ws[idx] / (c + 1)
 
+                while i < c:
+                    low_lines = get_lower_zero_lines(some)
+                    __idx__ = -1
+                    for l_l in range(len(low_lines)):
+                        index = low_lines[l_l][0]
+                        print(low_lines[l_l][0], abs(index - r_idx), 1/2 * min_w)
+                        if abs(index - r_idx * (i + 1)) <  1 / 2 * min_w:
+                            __idx__ = l_l
+                            break
+                    
+                    if __idx__ != -1:
+                        split__idx = low_lines[l_l][0]
+                        
+                        lines[idx].h = split__idx
+                        lines.insert(idx + 1, Line(lines[idx].start + split__idx + len(low_lines[l_l]) - 3, ws[idx] + 3 - split__idx -len(low_lines[l_l])))
+                                        
                     i += 1
 
 
 
-
-
-                
 
 
 
