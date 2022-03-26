@@ -37,8 +37,9 @@ def get_lines(list, w_min, w_max, w_h, is_print):
                     line = Line(start, h)
                     if w_h and h:
                         line.areaRate = total / (h * w_h)
+                        line.total = total
                         rates.append(line.areaRate)
-                        if (line.areaRate >= 0.06):
+                        if (line.areaRate >= 0.05):
                             lines.append(line)
                     else:
                         lines.append(line)
@@ -52,8 +53,9 @@ def get_lines(list, w_min, w_max, w_h, is_print):
                 line = Line(start, h)
                 if w_h:
                     line.areaRate = total / (h * w_h)
+                    line.total = total
                     rates.append(line.areaRate)
-                    if (line.areaRate >= 0.06):
+                    if (line.areaRate >= 0.05):
                         lines.append(line)
                 else:
                     lines.append(line)
@@ -253,7 +255,10 @@ def split_list_to_group_idx(list):
     # 分割的间隙值
     max_values = []
     count = 0
+    max_loop = len(list)
     while True:
+        if count > max_loop:
+            break
         max_idx, l = get_max_list_item(split_list)
         values = split_list[max_idx]
         c_values = [i for i in values]
@@ -314,3 +319,12 @@ def is_width_rate_of_change(values):
             count += 1
 
     return count >= 2
+
+
+def get_value_index(max_w, ws):
+    i = -1
+    for idx in range(len(ws)):
+        if ws[idx] == max_w:
+            i = idx
+            break
+    return i

@@ -3,23 +3,155 @@ import cv2
 from rect import get_gaps, Choice
 from util.projection import Y_Project, X_Project, get_rects
 from util.data import get_lines, get_max_value, filter_zero, split_list_to_group_idx, is_exist_min_value, \
-    is_width_rate_of_change, remove_exception_line
+    is_width_rate_of_change, remove_exception_line, get_value_index
 import numpy as np
 import os
+
 
 class ChoiceClassifier(Classifier):
     pass
 
     # 先按选项是水平分布的，按层来划分.
     def classifier(self):
-        
         points = self.convergency_rect()
-        self.do_vertica(points)
-    
+        self.is_horization(points)
+        #self.do_horization(points)
 
-    
+
+    def get_mat_gap(self, layer, row):
+        kernel = np.zeros((2, 2), np.uint8)
+        cv2.morphologyEx(layer, cv2.MORPH_OPEN, kernel)
+        gap = 0
+        w_w, x_project = X_Project(layer)
+        height, width = layer.shape
+        w_lines = get_lines(w_w, 1, width, 0, False)
+        w_gaps = get_gaps(w_lines)
+        split_groups = split_list_to_group_idx(w_gaps)
+        # find min length.
+        if len(split_groups) > 0:
+            __idx = -1
+            l = 0
+            for idx in range(len(split_groups)):
+                if l == 0:
+                    l = len(split_groups[idx])
+                    __idx = idx
+
+                if len(split_groups[idx]) < l:
+                    l = len(split_groups[idx])
+                    __idx = idx
+
+            if __idx != -1:
+                idx__ = 0
+                for i in range(__idx):
+                    idx__ += len(split_groups[i])
+                s_line = w_lines[idx__]
+                e_line = w_lines[idx__ + len(split_groups[__idx])]
+                if __idx != len(split_groups) - 1:
+                    e_line = w_lines[idx__ + len(split_groups[__idx]) - 1]
+
+                block_mat = layer[0: height, s_line.start: e_line.start + e_line.h]
+                height, width = block_mat.shape
+                w_w, x_project = X_Project(block_mat)
+                w_lines = get_lines(w_w, 1, width, 0, False)
+                gaps = get_gaps(w_lines)
+
+                if not self.is_choice_closed(w_lines):
+                    gap = -1
+                    ws = []
+                    for line in w_lines:
+                        ws.append(line.h)
+                    c_ws = [i for i in ws]
+                    max_w = get_max_value(c_ws)
+                    idx__ = get_value_index(max_w, ws)
+
+                    __i__ = idx__ + 1
+                    ws__ = []
+                    total = 0
+                    while __i__ < len(w_lines):
+                        if __i__ == idx__ + 1:
+                            ws__.append(w_lines[__i__].h)
+                            total += w_lines[__i__].h
+                        else:
+                            gap = w_lines[__i__].start - w_lines[__i__ - 1].h - w_lines[__i__ - 1].start
+                            w = w_lines[__i__].h
+                            total += gap
+                            total += w
+                            ws__.append(gap)
+                            ws__.append(w)
+                        if total > max_w:
+                            break
+                        __i__ += 1
+
+        if len(ws__) == 5:
+            gap = max(ws__[1], ws__[3])
+        if gap == -1 and len(ws__):
+            ws__.sort()
+            gap = ws__[0]
+        return gap
+
+    # 判断选项是否封闭.
+    def is_choice_closed(self, w_lines):
+        ws = []
+        for line in w_lines:
+            ws.append(line.h)
+
+        c_ws = [i for i in ws]
+        max_w = get_max_value(c_ws)
+        count = 0
+        for w in ws:
+            if w / max_w >= 0.5:
+                count += 1
+
+        return count > 2
+
+    def is_horization(self, points):
+        x, y, width, height = self.rect
+        [[x_start, y_start], [x_end, y_end]] = points
+        part = self.mat[y + y_start: y + y_end, x + x_start: x + x_end]
+        kernel = np.zeros((2, 2), np.uint8)
+        cv2.morphologyEx(part, cv2.MORPH_OPEN, kernel)
+        # 取两层：
+        h_h, y_project = Y_Project(part)
+        height, width = part.shape
+        lines = get_lines(h_h, width / 40, width, width, False)
+        if len(lines) >= 3:
+            layer1 = part[lines[0].start : lines[0].start + lines[0].h, 0: width]
+            layer2 = part[lines[1].start: lines[1].start + lines[1].h, 0: width]
+
+    def get_near_choice(self, w_lines, idx, max_w, layer, row):
+        nears = []
+        __idx = idx - 1
+        l_h, l_w = layer.shape
+        if __idx > 1:
+            __start = w_lines[__idx].start
+            __w = w_lines[__idx].h
+            __start = __start - (max_w - __w)
+            some = layer[0:l_h, __start: __start + max_w + 2]
+            cv2.imwrite("./imgs/s_" + str(row) + ".png", some)
+            s_h, s_w = some.shape
+            w_w, x_project = X_Project(some)
+            c_w = [i for i in w_w]
+            max_v = get_max_value(c_w)
+            __lines = get_lines(w_w, 1, max_v, s_h, False)
+            gaps = get_gaps(__lines)
+            nears.append(gaps)
+
+        __idx = idx + 1
+        if __idx >= len(w_lines):
+            __start = w_lines[__idx].start
+            some = layer[0:l_h, __start: __start + max_w]
+            cv2.imwrite("./imgs/s_2_" + str(row) + ".png", some)
+            s_h, s_w = some.shape
+            w_w, x_project = X_Project(some)
+            c_w = [i for i in w_w]
+            max_v = get_max_value(c_w)
+            __lines = get_lines(w_w, 1, max_v, s_h, False)
+            gaps = get_gaps(__lines)
+            nears.append(gaps)
+
+        return nears
+
     def do_vertica(self, points):
-
         x, y, width, height = self.rect
         [[x_start, y_start], [x_end, y_end]] = points
         part = self.mat[y + y_start: y + y_end, x + x_start: x + x_end]
@@ -117,8 +249,9 @@ class ChoiceClassifier(Classifier):
                 item_mark = choice.item_mark
                 cv2.imwrite("./imgs/c_" + str(idx) + ".png", self.mat[item_mark.y: item_mark.y + item_mark.h,
                                                              item_mark.x: item_mark.x + item_mark.w])
-                cv2.imwrite("./imgs/numbers/" + self.file_name + "_" + str(idx) + ".png", self.mat[number_item.y: number_item.y + number_item.h,
-                                                             number_item.x: number_item.x + number_item.w])
+                cv2.imwrite("./imgs/numbers/" + self.file_name + "_" + str(idx) + ".png",
+                            self.mat[number_item.y: number_item.y + number_item.h,
+                            number_item.x: number_item.x + number_item.w])
 
     # 获取每一层的信息. 数字和选项的分类判断.
     def get_layer_desc(self, mat, index):
@@ -127,7 +260,7 @@ class ChoiceClassifier(Classifier):
         count = 0
         while True:
             # 防止死循环
-            if count >= 20:
+            if count >= 10:
                 break
             w_w, v_projection = X_Project(mat)
             cv2.imwrite("./imgs/y_projection_" + str(index) + ".png", v_projection)
@@ -139,7 +272,7 @@ class ChoiceClassifier(Classifier):
             if not is_exist_min_value(gaps, 2):
                 break
             # 找到合适的间隙，进行膨胀.
-            gap = 2
+            gap = 5
             # print(gaps, gap, 1)
             kernel = np.ones((gap, gap), np.uint8)
             mat = cv2.erode(mat, kernel)
@@ -161,40 +294,8 @@ class ChoiceClassifier(Classifier):
 
 path = "D:/study/py/imgs/"
 
+
 if __name__ == '__main__':
-    img = cv2.imread(path + "DN0114000003.TIF", 0)
-    choiceClassifier = ChoiceClassifier(img, (184, 721, 1143, 123), "DN0114000003")
+    img = cv2.imread(path + "4.TIF", 0)
+    choiceClassifier = ChoiceClassifier(img, (242, 800, 1272, 188), "4")
     choiceClassifier.classifier()
-
-# if __name__ == '__main__':
-#     files = os.listdir(path)  # 获得文件夹中所有文件的名称列表
-#     for file in files:
-#         i = 0
-#         skip_zero = True
-#         idx = -1
-#         end = -1
-#         while i < len(file):
-#             value = file[i: i+1]
-#             i += 1
-#             if skip_zero:
-#                 if '0' < value <= '9':
-#                     if idx == -1:
-#                         skip_zero = False
-#                         idx = i
-#             else:
-#                 if not ('0' <= value <= '9'):
-#                     if end == -1:
-#                         end = i - 1
-
-#         value = file[idx: end]
-#         if int(value) % 2 == 1:
-#             file = path + file
-#             img = cv2.imread(file, 0)
-#             img = np.rot90(img)
-#             choiceClassifier = ChoiceClassifier(img, (102, 825, 999, 203), value)
-#             # 103 824, 1011, 211
-#             # choiceClassifier = ChoiceClassifier(img, (103, 824, 1011, 211), value)
-#             choiceClassifier.classifier()
-    
-
-

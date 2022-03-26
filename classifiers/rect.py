@@ -11,6 +11,7 @@ class Line:
     def __init__(self, start, h):
         self.start = start
         self.h = h
+        self.total = 0
         self.areaRate = 0.0    
 
 

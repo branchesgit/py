@@ -1,75 +1,169 @@
+import cv2
+import math
+from util.projection import X_Project
+from util.data import get_lines, get_max_value, get_value_index, get_index
 
-# from fileinput import close
-# from math import ceil
-# from project import vProject
-# import cv2
-# from rect import Rect, sort_y, sort_x
-# import numpy as np
-# class OptionClassifier():
-#     def set_direction(self, direction):
-#         self.direction = direction
 
-#     def classifier(self, mat):
-#         kernel = np.ones((5,5),np.uint8)
-#         cv2.morphologyEx(mat,cv2.MORPH_OPEN,kernel)
-#         ret,thresh = cv2.threshold(mat,127,255,0)
-#         contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-#         areas = []
-#         height, width = mat.shape
-#         m = 1000
-#         for i in range(0,len(contours)):  
-#             x, y, w, h = cv2.boundingRect(contours[i])   
-#             areas.append(w * h)
-#             m = min(m, w * h)
-#             if w < 3 * width / 4 and h < 3 * height / 4:
-#                 if w * h >= 10:
-#                     cv2.rectangle(mat, (x,y), (x+w,y+h), (0,0,0), -1) 
+def sort_y(rect):
+    x, y, w, h = rect
+    return x
 
-#         # 对v_project进行逻辑处理.
-#         w_w, v_project = vProject(mat)
-#         contours, hierarchy = cv2.findContours(v_project,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-#         x_rects = []
-        
-#         for i in range(len(contours)):
-#             x, y, w, h = cv2.boundingRect(contours[i])
-#             rect = Rect(x, y, w, h)
-#             x_rects.append(rect)
-            
-#         ws = []   
-#         gaps = []
-#         x_rects.sort(key=sort_x)
-#         for i in range(len(x_rects)):
-#             rect = x_rects[i]
-#             ws.append(rect.w)
-#             if i >= 1:
-#                 gaps.append(rect.x - x_rects[i -1].x - x_rects[i-1].w)
 
-#         c_gaps = [i for i in gaps]
-#         gaps.sort()
-#         gaps_len = len(gaps) - 1
-#         m = gaps[gaps_len]
-#         count = 0
-#         middle = gaps[int(gaps_len / 2)] + 1
-#         kernel = np.ones((middle, middle), np.uint8)
-#         v_project = cv2.dilate(v_project,kernel)
+class OptionClassifier:
+    def classifier(self, mat):
+        self.cuttingOptions(mat)
 
-#         cv2.imwrite("./imgs/vpro.png", v_project)
+    def cuttingOptions(self, img):
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        ret, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        height, width = gray.shape
+        cnts, hierarchy = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        list = []
+        for cnt in cnts:
+            # 外接矩形框，没有方向角
+            x, y, w, h = cv2.boundingRect(cnt)
+            if w < width / 2 and h > 3:
+                list.append((x, y, w, h))
+                # cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 0), -1)
+                cv2.rectangle(gray, (x, y), (x + w, y + h), (0, 0, 0), -1)
 
-#         # value = ceil((middle + m) / 2)
-#         # while gaps_len >= 0:
-#         #     gaps_len -= 1
-#         #     if gaps[gaps_len] >= value:
-#         #         count += 1
-        
-#         # n = gaps[gaps_len - count + 1]
-        
-#         # indexs = []
-#         # for i in range(len(c_gaps)):
-#         #     if c_gaps[i] >= n and c_gaps[i] <= m:
-#         #         indexs.append(i)
-#         # print(indexs, c_gaps)
-        
+        cv2.imwrite("./imgs/c_4.png", gray)
+        list.sort(key=sort_y)
+        rates = []
+        for rect in list:
+            x, y, w, h = rect
+            rates.append(h / w)
 
-#     # 得到最小的矩形框
-#     def get_min_rect(self, mat, rect):
-#         print('get_min_rect')
+        w_w, x_project = X_Project(gray)
+        lines = get_lines(w_w, 1, height, height, False)
+        line_list = len(lines) - 1
+        h_w_rates = []
+        while line_list:
+            line = lines[line_list]
+            h_w_rates.append(line.total / line.h / line.h)
+            line_list -= 1
+
+        print(h_w_rates)
+        lines.reverse()
+        merge_lines = []
+        exceptions = []
+        useIdxs = []
+        if len(h_w_rates) > 5:
+            for idx in range(len(h_w_rates)):
+                rate = h_w_rates[idx]
+                if rate < 0.85 or rate > 1.6:
+                    continue
+
+                use_idx = -1
+                for useIdx in useIdxs:
+                    if useIdx == idx:
+                        use_idx = 0
+                        break
+
+                if use_idx != -1:
+                    continue
+
+                is_right_line = False
+                is_left_line = False
+                right_line = []
+                left_line = []
+                line = lines[idx]
+
+                cv2.rectangle(gray2, (line.start, 0), (line.start + line.h, height), (0, 0, 255), -1)
+                # 向两边搜索.
+                if idx > 0:
+                    right_line = lines[idx - 1]
+                    is_right_line = self.is_line(gray2[0: height, right_line.start: right_line.start + right_line.h],
+                                                 idx,
+                                                 1)
+
+                if idx < len(h_w_rates) - 1:
+                    left_line = lines[idx + 1]
+                    is_left_line = self.is_line(gray2[0: height, left_line.start: left_line.start + left_line.h], idx,
+                                                0)
+
+                print(is_right_line, is_left_line, line.start, line.h)
+                if is_right_line and is_left_line:
+                    useIdxs.append(idx - 1)
+                    useIdxs.append(idx)
+                    useIdxs.append(idx + 1)
+                    merge_lines.append([left_line.start, right_line.start + right_line.h])
+                    cv2.rectangle(img, (left_line.start, 0), (right_line.start + right_line.h, height), (255, 0, 0), 1)
+
+                else:
+                    if is_left_line:
+                        useIdxs.append(idx - 1)
+                        useIdxs.append(idx)
+                        useIdxs.append(idx + 1)
+                        merge_lines.append([left_line.start, right_line.start + left_line.h + 2])
+                        exceptions.append([right_line.start + left_line.h + 2, right_line.h])
+                        cv2.rectangle(img, (left_line.start, 0), (right_line.start + right_line.h, height), (0, 120, 0),
+                                      1)
+                    else:
+                        if is_right_line:
+                            useIdxs.append(idx - 1)
+                            useIdxs.append(idx)
+                            useIdxs.append(idx + 1)
+                            merge_lines.append(
+                                [left_line.start + left_line.h - right_line.h - 2, right_line.start + right_line.h])
+                            exceptions.append([left_line.start, left_line.start + left_line.h - right_line.h - 2])
+                            cv2.rectangle(img, (left_line.start + left_line.h - right_line.h - 2, 0),
+                                          (right_line.start + right_line.h, height),
+                                          (0, 255, 0), 1)
+
+        for idx in range(len(exceptions)):
+            ary = exceptions[idx]
+            cv2.rectangle(img, (ary[0], 0), (ary[1], height), (0, 0, 255), 1)
+
+        for idx in range(len(lines)):
+            i = -1
+            for __idx__ in range(len(useIdxs)):
+                if useIdxs[__idx__] == idx:
+                    i = __idx__
+                    break
+            if i == -1:
+                cv2.rectangle(img, (lines[idx].start, 0), (lines[idx].start + lines[idx].h, height), (0, 0, 255), 1)
+
+        print(exceptions, len(lines))
+        cv2.imwrite("./imgs/c_5.png", img)
+        cv2.imwrite("./imgs/c_5_1.png", gray2)
+
+    def is_line(self, mat, idx, direction):
+
+        # cv2.imwrite("./imgs/line_" + str(idx) + "_" + str(direction) + ".png", mat)
+        w_w, x_project = X_Project(mat)
+        while w_w[-1] == 0:
+            w_w = w_w[0: len(w_w) - 2]
+        while w_w[0] == 0:
+            w_w = w_w[1:]
+        middle = math.ceil(len(w_w) / 2)
+        left_sum = 0
+        right_sum = 0
+        c_w = [i for i in w_w]
+        max_value = get_max_value(c_w)
+
+        height, width = mat.shape
+        for idx in range(middle):
+            left_sum += w_w[idx]
+            right_sum += w_w[len(w_w) - 1 - idx]
+
+        isTrue = False
+        if direction == 1:
+            isTrue = right_sum > left_sum
+        else:
+            isTrue = left_sum > right_sum
+
+        if isTrue:
+            return len(w_w) <= 12
+        else:
+            return isTrue
+
+
+# path = "./imgs/op_1.png"
+path = "D:/sb/10500/op_10.png"
+path = "./imgs/er_3.png"
+if __name__ == "__main__":
+    img = cv2.imread(path)
+    classifier = OptionClassifier()
+    classifier.classifier(img)
